@@ -1,37 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Library Management System Backend
+
+Backend API for the CSX4107/ITX4107 Web Application Development final exam.
+
+Implemented with:
+- Next.js (App Router)
+- MongoDB
+- JWT authentication via HTTP-only cookie
+
+## Features
+
+- User login/logout with JWT cookie authentication
+- Role-based authorization (`ADMIN`, `USER`)
+- Book management API with full CRUD
+- Soft delete for books (`status: "DELETED"`)
+- Book search by `title` and `author`
+- Borrow request creation and status update workflow
+- Borrow status transitions:
+  - `INIT`
+  - `CLOSE-NO-AVAILABLE-BOOK`
+  - `ACCEPTED`
+  - `CANCEL-ADMIN`
+  - `CANCEL-USER`
+- Book quantity synchronization:
+  - Quantity decreases when request becomes `ACCEPTED`
+  - Quantity increases when accepted request is cancelled/closed
+
+## Required Test Users
+
+These users are auto-seeded on login if not found in the database:
+
+| Role | Email | Password |
+|---|---|---|
+| ADMIN | `admin@test.com` | `admin123` |
+| USER | `user@test.com` | `user123` |
+
+## Environment Variables
+
+Create `.env.local` in this backend folder:
+
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>/
+MONGODB_DB_NAME=library_management
+MONGODB_USER_COLLECTION=user
+MONGODB_BOOK_COLLECTION=book
+MONGODB_BORROW_COLLECTION=borrow
+JWT_SECRET=your_jwt_secret
+ADMIN_SETUP_PASS=your_admin_setup_password
+```
+
+Notes:
+- `MONGODB_URI` should point to your MongoDB Atlas cluster.
+- The DB/collection variables can be changed without touching source code.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Default URL:
+- `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## API Endpoints
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Authentication
 
-## Learn More
+- `POST /api/user/login`
+- `POST /api/user/logout`
 
-To learn more about Next.js, take a look at the following resources:
+### User
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `POST /api/user` (register)
+- `GET /api/user/profile` (authenticated)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Book
 
-## Deploy on Vercel
+- `GET /api/book`  
+  Query params: `title`, `author`, `includeDeleted=true` (admin only meaningful)
+- `POST /api/book` (ADMIN only)
+- `GET /api/book/:id`
+- `PATCH /api/book/:id` (ADMIN only)
+- `DELETE /api/book/:id` (ADMIN only, soft delete)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Borrow
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# my-backend-final
+- `GET /api/borrow`  
+  - ADMIN: all requests
+  - USER: own requests
+- `POST /api/borrow`
+  - Create request (USER)
+  - Update request status (ADMIN / USER cancel)
+
+## Authorization Rules
+
+- Unauthenticated requests return `401`.
+- Authenticated but unauthorized actions return `403`.
+- Book create/update/delete are ADMIN-only.
+- USER can create borrow requests and cancel own requests.
+- ADMIN can update borrow statuses (`ACCEPTED`, `CLOSE-NO-AVAILABLE-BOOK`, `CANCEL-ADMIN`).
+
+## Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Production build
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+## Project Structure
+
+```text
+src/
+  app/
+    api/
+      user/
+      book/
+      borrow/
+  lib/
+    mongodb.js
+    auth.js
+    cors.js
+    ensureIndexes.js
+```
+
+## Troubleshooting
+
+- If login works in API tools but not browser:
+  - Confirm frontend origin and CORS configuration.
+  - Ensure frontend sends requests with `credentials: "include"`.
+- If MongoDB connection fails:
+  - Verify `MONGODB_URI`.
+  - Ensure Atlas Network Access allows your IP.
