@@ -8,6 +8,11 @@ import { BOOK_COLLECTION, DB_NAME, getClientPromise } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
+const BOOK_STATUS = {
+  ACTIVE: "ACTIVE",
+  DELETED: "DELETED",
+};
+
 function parseObjectId(id) {
   if (!ObjectId.isValid(id)) {
     return null;
@@ -154,6 +159,19 @@ export async function PATCH(req, { params }) {
       }
       updateData.quantity = quantity;
     }
+    if (body.status !== undefined) {
+      const status = String(body.status).trim().toUpperCase();
+      if (![BOOK_STATUS.ACTIVE, BOOK_STATUS.DELETED].includes(status)) {
+        return NextResponse.json(
+          { message: "Status must be ACTIVE or DELETED" },
+          {
+            status: 400,
+            headers,
+          }
+        );
+      }
+      updateData.status = status;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -187,7 +205,12 @@ export async function PATCH(req, { params }) {
     }
 
     return NextResponse.json(
-      { message: "Book updated" },
+      {
+        message:
+          updateData.status === BOOK_STATUS.ACTIVE
+            ? "Book restored"
+            : "Book updated",
+      },
       {
         status: 200,
         headers,
